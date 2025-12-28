@@ -210,19 +210,23 @@ class run(APP):
         # zoom
         if e.type == pygame.MOUSEWHEEL:
             mpos = V2(pygame.mouse.get_pos())
-            before = self.screen_to_world(mpos)
+            before = self.StW(mpos)
 
             s = 1.01
             ZOOM *= s if e.y > 0 else 1/s
             ZOOM = max(0.2, min(4.0, ZOOM))
 
-            after = self.screen_to_world(mpos)
+            after = self.StW(mpos)
             OFFSET += before - after
 
+        # spawn new paper
+        if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+            self.paper_group.add(Paper(self.StW(V2(e.pos))))
 
 
-    def world_to_screen(self, p): return (p - OFFSET) * ZOOM
-    def screen_to_world(self, p): return V2(p) / ZOOM + OFFSET
+
+    def WtS(self, p): return (p - OFFSET) * ZOOM
+    def StW(self, p): return V2(p) / ZOOM + OFFSET
 
 
 

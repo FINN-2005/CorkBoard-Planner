@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Paper Content System Prototype</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            background: #e0e0e0;
+        }
+
+        /* ----------- PAPER PREVIEW ----------- */
+
+        .workspace {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .paper {
+            width: 380px;
+            min-height: 420px;
+            padding: 20px;
+            background: #fff7b0;
+            border-radius: 10px;
+            box-shadow: 0 16px 28px rgba(0,0,0,0.25);
+            box-sizing: border-box;
+        }
+
+        .paper-element {
+            margin-bottom: 12px;
+        }
+
+        .paper-element h1,
+        .paper-element p {
+            margin: 4px 0;
+        }
+
+        /* ----------- SIDEBAR ----------- */
+
+        .sidebar {
+            width: 360px;
+            background: #141414;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px;
+            box-sizing: border-box;
+        }
+
+        .top-panel {
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 10px;
+            min-height: 140px;
+            position: relative;
+        }
+
+        .add-button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            background: #0f8cff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .elements-list {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .element-item {
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: #2b2b2b;
+            cursor: pointer;
+        }
+
+        .element-item.selected {
+            background: #0f8cff;
+        }
+
+        /* ----------- FLOATING MENU ----------- */
+
+        .menu {
+            position: absolute;
+            top: 50px;
+            left: 15px;
+            background: #2a2a2a;
+            border: 1px solid #555;
+            border-radius: 10px;
+            padding: 6px;
+            display: none;
+            z-index: 10;
+        }
+
+        .menu button {
+            width: 140px;
+            padding: 6px 8px;
+            margin: 3px 0;
+            border-radius: 8px;
+            background: #3a3a3a;
+            color: white;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .menu button:hover {
+            background: #4a4a4a;
+        }
+
+        /* ----------- PROPERTIES ----------- */
+
+        .properties {
+            flex: 1;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 12px;
+            background: #101010;
+            overflow-y: auto;
+        }
+
+        .prop-field {
+            margin-bottom: 12px;
+        }
+
+        .prop-field label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 3px;
+        }
+
+        .prop-field input,
+        .prop-field textarea,
+        .prop-field select {
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+
+<body>
+
+    <!-- LEFT: PAPER PREVIEW -->
+    <div class="workspace">
+        <div class="paper" id="paperPreview">
+        </div>
+    </div>
+
+    <!-- RIGHT: CONTROL PANEL -->
+    <div class="sidebar">
+
+        <div class="top-panel" id="topPanel">
+
+            <button class="add-button" id="addButton">
+                + Add Element
+            </button>
+
+            <div class="menu" id="menu">
+                <button data-type="heading">Heading</button>
+                <button data-type="text">Text</button>
+                <button data-type="list">List</button>
+                <button data-type="image">Image</button>
+                <button data-type="canvas">Canvas</button>
+            </div>
+
+            <div class="elements-list" id="elementsList">
+            </div>
+
+        </div>
+
+        <div class="properties" id="properties">
+            <i>Select an element to edit its properties</i>
+        </div>
+
+    </div>
+
+
+
+    <script>
+        const addButton = document.getElementById("addButton");
+        const menu = document.getElementById("menu");
+        const elementsList = document.getElementById("elementsList");
+        const properties = document.getElementById("properties");
+        const paperPreview = document.getElementById("paperPreview");
+
+        let elements = [];
+        let selectedId = null;
+
+        /* ----------- MENU TOGGLE ----------- */
+
+        addButton.onclick = () => {
+            menu.style.display =
+                menu.style.display === "block" ? "none" : "block";
+        };
+
+        /* ----------- ADD ELEMENT FROM MENU ----------- */
+
+        menu.querySelectorAll("button").forEach(btn => {
+            btn.onclick = () => {
+                const type = btn.dataset.type;
+                addElement(type);
+                menu.style.display = "none";
+            };
+        });
+
+        function addElement(type) {
+            const id = Date.now();
+
+            elements.push({
+                id: id,
+                type: type,
+                props: defaultProps(type)
+            });
+
+            selectedId = id;
+
+            renderElementsList();
+            renderProperties();
+            renderPaper();
+        }
+
+        function defaultProps(type) {
+            switch (type) {
+                case "heading":
+                    return { text: "Heading", size: 28, align: "center" };
+
+                case "text":
+                    return { text: "Body text goes here", size: 16, align: "left" };
+
+                case "list":
+                    return { items: "item 1\nitem 2\nitem 3" };
+
+                case "image":
+                    return { url: "", width: 260 };
+
+                case "canvas":
+                    return { width: 260, height: 120 };
+            }
+        }
+
+        /* ----------- ELEMENT LIST ----------- */
+
+        function renderElementsList() {
+            elementsList.innerHTML = "";
+
+            elements.forEach(el => {
+                const div = document.createElement("div");
+
+                div.className =
+                    "element-item" +
+                    (el.id === selectedId ? " selected" : "");
+
+                div.textContent = el.type;
+
+                div.onclick = () => {
+                    selectedId = el.id;
+                    renderElementsList();
+                    renderProperties();
+                    renderPaper();
+                };
+
+                elementsList.appendChild(div);
+            });
+        }
+
+        /* ----------- PAPER PREVIEW RENDER ----------- */
+
+        function renderPaper() {
+            paperPreview.innerHTML = "";
+
+            elements.forEach(el => {
+                const wrapper = document.createElement("div");
+                wrapper.className = "paper-element";
+
+                if (el.type === "heading") {
+                    const h = document.createElement("h1");
+                    h.innerText = el.props.text;
+                    h.style.fontSize = el.props.size + "px";
+                    h.style.textAlign = el.props.align;
+                    wrapper.appendChild(h);
+                }
+
+                if (el.type === "text") {
+                    const p = document.createElement("p");
+                    p.innerText = el.props.text;
+                    p.style.fontSize = el.props.size + "px";
+                    p.style.textAlign = el.props.align;
+                    wrapper.appendChild(p);
+                }
+
+                if (el.type === "list") {
+                    const ul = document.createElement("ul");
+                    el.props.items.split("\n").forEach(item => {
+                        const li = document.createElement("li");
+                        li.innerText = item;
+                        ul.appendChild(li);
+                    });
+                    wrapper.appendChild(ul);
+                }
+
+                if (el.type === "image") {
+                    const img = document.createElement("img");
+                    img.src = el.props.url;
+                    img.style.width = el.props.width + "px";
+                    img.style.maxWidth = "100%";
+                    wrapper.appendChild(img);
+                }
+
+                if (el.type === "canvas") {
+                    const box = document.createElement("div");
+                    box.style.width = el.props.width + "px";
+                    box.style.height = el.props.height + "px";
+                    box.style.background = "#ffffff";
+                    box.style.border = "2px dashed #444";
+                    wrapper.appendChild(box);
+                }
+
+                paperPreview.appendChild(wrapper);
+            });
+        }
+
+        /* ----------- PROPERTIES PANEL ----------- */
+
+        function renderProperties() {
+            const el = elements.find(e => e.id === selectedId);
+
+            if (!el) {
+                properties.innerHTML =
+                    "<i>Select an element to edit its properties</i>";
+                return;
+            }
+
+            const p = el.props;
+
+            let html = `<h3>${el.type} properties</h3>`;
+
+            if (el.type === "heading" || el.type === "text") {
+                html += `
+                    <div class="prop-field">
+                        <label>Text</label>
+                        <textarea id="prop_text">${p.text}</textarea>
+                    </div>
+
+                    <div class="prop-field">
+                        <label>Font size</label>
+                        <input id="prop_size" type="number" value="${p.size}">
+                    </div>
+
+                    <div class="prop-field">
+                        <label>Alignment</label>
+                        <select id="prop_align">
+                            <option ${p.align === "left" ? "selected" : ""}>left</option>
+                            <option ${p.align === "center" ? "selected" : ""}>center</option>
+                            <option ${p.align === "right" ? "selected" : ""}>right</option>
+                        </select>
+                    </div>
+                `;
+            }
+
+            if (el.type === "list") {
+                html += `
+                    <div class="prop-field">
+                        <label>Items (one per line)</label>
+                        <textarea id="prop_items">${p.items}</textarea>
+                    </div>
+                `;
+            }
+
+            if (el.type === "image") {
+                html += `
+                    <div class="prop-field">
+                        <label>Image URL</label>
+                        <input id="prop_url" value="${p.url}">
+                    </div>
+
+                    <div class="prop-field">
+                        <label>Width</label>
+                        <input id="prop_img_width" type="number" value="${p.width}">
+                    </div>
+                `;
+            }
+
+            if (el.type === "canvas") {
+                html += `
+                    <div class="prop-field">
+                        <label>Width</label>
+                        <input id="prop_can_w" type="number" value="${p.width}">
+                    </div>
+
+                    <div class="prop-field">
+                        <label>Height</label>
+                        <input id="prop_can_h" type="number" value="${p.height}">
+                    </div>
+                `;
+            }
+
+            properties.innerHTML = html;
+
+            bindPropertyInputs(el);
+        }
+
+        /* ----------- LINK INPUTS TO DATA ----------- */
+
+        function bindPropertyInputs(el) {
+            const p = el.props;
+
+            const text = document.getElementById("prop_text");
+            if (text) text.oninput = () => { p.text = text.value; renderPaper(); };
+
+            const size = document.getElementById("prop_size");
+            if (size) size.oninput = () => { p.size = Number(size.value); renderPaper(); };
+
+            const align = document.getElementById("prop_align");
+            if (align) align.oninput = () => { p.align = align.value; renderPaper(); };
+
+            const items = document.getElementById("prop_items");
+            if (items) items.oninput = () => { p.items = items.value; renderPaper(); };
+
+            const url = document.getElementById("prop_url");
+            if (url) url.oninput = () => { p.url = url.value; renderPaper(); };
+
+            const imgW = document.getElementById("prop_img_width");
+            if (imgW) imgW.oninput = () => { p.width = Number(imgW.value); renderPaper(); };
+
+            const canW = document.getElementById("prop_can_w");
+            if (canW) canW.oninput = () => { p.width = Number(canW.value); renderPaper(); };
+
+            const canH = document.getElementById("prop_can_h");
+            if (canH) canH.oninput = () => { p.height = Number(canH.value); renderPaper(); };
+        }
+    </script>
+
+</body>
+</html>
