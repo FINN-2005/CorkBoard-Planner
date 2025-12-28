@@ -79,6 +79,7 @@ Stuff like:
 ---
 ## What I Have Right Now  
 
-- An infinitely tilebale corkboard
-- spand and zoom capabilities
-- And start of the Paper class
+- An infinitely tilebale corkboard  
+- spand and zoom capabilities  
+- And start of the Paper class  
+- Plans for page content system and major future code factoring with performance optimisation  
